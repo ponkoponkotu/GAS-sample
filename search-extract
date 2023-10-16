@@ -1,0 +1,114 @@
+function searchAndExtract() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet(); 
+
+  const sheet_output = ss.getSheetByName('BBB');
+
+  //出力シート内をクリアする  
+  const lastrow = sheet_output.getLastRow();
+  sheet_output.getRange(1,1,lastrow,5).clear();
+
+  const datasheet = ss.getSheetByName('AAA');
+
+  //フォームのデータを配列に格納
+  const records = datasheet.getDataRange().getValues();
+
+  //項目行を取り出し変数headerに格納
+  const header = records.shift();
+  
+  //入力した氏名を取得
+  const name = sheet_output.getRange('H2').getValue();
+
+  //入力した日付(始まり)を取得
+  const day_from = sheet_output.getRange('H4').getValue();
+
+  //入力した日付(終わり)を取得
+  const day_to = sheet_output.getRange('H6').getValue();
+
+
+  //入力情報が不足している場合の処理
+  //1.氏名未入力時
+  if (!name){
+
+    var response = Browser.msgBox('氏名を入力してください');
+
+    Logger.log('1.氏名未入力');
+
+    return false;
+  }
+
+  Logger.log(2);
+
+  Logger.log(name);
+
+  //2.日付(始まり,終わり共に)未入力時の処理
+  if (!day_from && !day_to){
+
+    var newRecords = records.filter(record => record[1] === name);
+
+    Logger.log('3.日付未入力');
+  }
+  Logger.log(4);
+  
+  //3.日付(終わり)未入力時の処理
+  if (day_from && !day_to){
+
+    var newRecords = records.filter(record => record[1] === name && record[2].getTime() >= day_from.getTime() );
+
+    Logger.log('5.終わり未入力');
+  }
+  Logger.log(6);
+
+  //4.日付(始まり)未入力時の処理
+  if (!day_from && day_to){
+
+    var newRecords = records.filter(record => record[1] === name && record[2].getTime() < day_to.getTime() );
+
+    Logger.log('7.始まり未入力');
+  }
+  Logger.log(8);
+
+  //5.氏名,日付すべて入力されている場合の処理
+  if (day_from && day_to){
+
+    Logger.log('9.未入力なし');
+
+    //5-1.開始日より前の日付が終了日ひ入力されている場合の処理
+    if (day_from.getTime() > day_to.getTime()){
+
+      var response = Browser.msgBox('終了日には開始日より後の日付を入力してください。');
+
+      Logger.log('9-1.開始日終了日の入力不備');
+
+      return false;
+    }
+    //5-2.不備なし
+    Logger.log('9-2.日付不備なし')
+
+    var newRecords = records.filter(
+
+    record => record[1] === name && record[2].getTime() >= day_from.getTime() && record[2].getTime() < day_to.getTime()); 
+  }
+
+  Logger.log(10);
+  Logger.log(newRecords)
+
+  //6.入力情報が検索ヒットしない場合の処理
+  if (!newRecords){
+
+      var response = Browser.msgBox('検索結果がゼロです。検索値を入力しなおしてください。');
+      Logger.log('11.検索ヒットなし');
+
+      return false;
+  }
+
+  Logger.log(12);
+
+  // 配列の先頭に項目行を追加
+  newRecords.unshift(header);
+
+  //列をしぼる(名前/日付/体温/開始時間/終了時間/利用形態)
+  newRecords = newRecords.map(elm => [elm[1],elm[2],elm[3],elm[4],elm[5]]);
+  
+  //抽出した情報を出力シートに出力する
+  sheet_output.getRange(1, 1, newRecords.length, newRecords[0].length).setValues(newRecords);
+}
